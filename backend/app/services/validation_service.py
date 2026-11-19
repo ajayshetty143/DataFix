@@ -95,11 +95,13 @@ class ValidationService:
             key = (r_iss.get("category"), r_iss.get("column"))
             repaired_issue_map[key] = r_iss
 
+        orig_issue_by_key: Dict[tuple, str] = {}
         for orig_iss in orig_issues:
             cat = orig_iss.get("category")
             col = orig_iss.get("column")
             orig_count = orig_iss.get("affected_count", 0)
             key = (cat, col)
+            orig_issue_by_key[key] = orig_iss.get("id", "UNKNOWN")
 
             if key not in repaired_issue_map:
                 # Fully resolved!
@@ -129,6 +131,14 @@ class ValidationService:
                         "status": "partially_resolved",
                     })
 
+        # Enrich remaining issues with original_issue_id to preserve baseline issue ID trace
+        enriched_remaining_issues: List[Dict[str, Any]] = []
+        for r_iss in repaired_issues:
+            item = dict(r_iss)
+            orig_id = orig_issue_by_key.get((r_iss.get("category"), r_iss.get("column")))
+            item["original_issue_id"] = orig_id if orig_id else r_iss.get("id")
+            enriched_remaining_issues.append(item)
+
         # 6. Fetch repair stats from database
         repairs = (
             db.query(RepairRecord)
@@ -143,7 +153,7 @@ class ValidationService:
 
         # 7. Construct complete validation comparison
         # Important: Never claim all issues are fixed unless remaining_issues count is 0
-        is_fully_clean = len(repaired_issues) == 0
+        is_fully_clean = len(enriched_remaining_issues) == 0
 
         report = {
             "dataset_id": dataset_id,
@@ -153,11 +163,11 @@ class ValidationService:
             "score_improvement": round(repaired_score - orig_score, 1),
             "is_fully_clean": is_fully_clean,
             "original_issues_count": len(orig_issues),
-            "repaired_issues_count": len(repaired_issues),
+            "repaired_issues_count": len(enriched_remaining_issues),
             "resolved_issues_count": len(resolved_issues),
-            "remaining_issues_count": len(repaired_issues),
+            "remaining_issues_count": len(enriched_remaining_issues),
             "resolved_issues": resolved_issues,
-            "remaining_issues": repaired_issues,
+            "remaining_issues": enriched_remaining_issues,
             "repair_summary": {
                 "total": total_repairs,
                 "applied": applied_repairs,

@@ -142,6 +142,20 @@ def detect_statistical_anomalies(df: pd.DataFrame) -> List[QualityIssue]:
         anomaly_details: List[Dict[str, Any]] = []
         has_extreme = False
 
+        # Domain rule detection for semantic columns
+        col_lower = col_str.lower()
+        tokens = set(re.split(r'[^a-zA-Z0-9]+', col_lower))
+
+        # 1. Age domain checks (cannot be negative or > 130 for humans)
+        is_age_col = bool(tokens & {"age", "patient_age", "dob_age", "client_age", "user_age"}) or any(
+            t in col_lower for t in ["patient_age", "_age", "age_in_years", "age_years"]
+        )
+
+        # 2. Fee / Charge checks (cannot be negative without explicit refund/credit semantics)
+        FEE_TERMS = {"fee", "fees", "consultation_fee", "charge", "charges", "copay", "co_pay", "premium", "bill", "price", "tariff"}
+        is_fee_col = bool(tokens & FEE_TERMS) or any(t in col_lower for t in ["consultation_fee", "doctor_fee", "_fee", "_charge"])
+        has_credit_refund_semantic = bool(re.search(r'refund|credit|discount|adjustment|rebate|offset', col_lower))
+
         # First add infinite values as extreme anomalies
         if inf_mask.any():
             for idx, is_inf in enumerate(inf_mask):
@@ -156,44 +170,67 @@ def detect_statistical_anomalies(df: pd.DataFrame) -> List[QualityIssue]:
                         "z_score": 99.99,
                         "is_extreme": True,
                         "bound_violation": "infinite_value",
+                        "reason": "Infinite numerical value",
                     })
 
-        # Next evaluate finite values if distribution exists
-        if std_val > 0.0 and not math.isnan(std_val):
-            for idx, val in enumerate(num_series):
-                if pd.isna(val) or not np.isfinite(val):
-                    continue
-                val_float = float(val)
+        # Next evaluate finite values against domain constraints and statistical distribution
+        for idx, val in enumerate(num_series):
+            if pd.isna(val) or not np.isfinite(val):
+                continue
+            val_float = float(val)
 
-                # Calculate Z-score
-                z_score = abs((val_float - mean_val) / std_val)
+            # Check domain boundary violations
+            is_domain_violation = False
+            domain_reason = None
+            bound_viol = None
 
-                # Condition: outside IQR bounds OR |Z| > 3.0
-                is_iqr_outlier = val_float < lower_bound or val_float > upper_bound
-                is_z_outlier = z_score >= 3.0
+            if is_age_col:
+                if val_float < 0:
+                    is_domain_violation = True
+                    domain_reason = f"Negative age ({int(val_float) if val_float.is_integer() else val_float}) is biologically invalid"
+                    bound_viol = "negative_age"
+                elif val_float > 130:
+                    is_domain_violation = True
+                    domain_reason = f"Age ({int(val_float) if val_float.is_integer() else val_float}) exceeds realistic human lifespan (130 years)"
+                    bound_viol = "unrealistic_human_age"
 
-                if is_iqr_outlier or is_z_outlier:
-                    row_num = idx + 1
-                    anomalous_rows.append(row_num)
+            if is_fee_col and not has_credit_refund_semantic:
+                if val_float < 0:
+                    is_domain_violation = True
+                    domain_reason = f"Negative fee ({int(val_float) if val_float.is_integer() else val_float}) without refund/credit semantics"
+                    bound_viol = "negative_fee_without_refund_semantics"
 
-                    is_extreme = (val_float < extreme_lower or val_float > extreme_upper or z_score >= 4.0)
-                    if is_extreme:
-                        has_extreme = True
+            # Check statistical distribution if std_val > 0
+            z_score = abs((val_float - mean_val) / std_val) if std_val > 0.0 else 0.0
+            is_iqr_outlier = (val_float < lower_bound or val_float > upper_bound) if (std_val > 0.0 and iqr > 0.0) else False
+            is_z_outlier = z_score >= 3.0 if std_val > 0.0 else False
 
-                    anomaly_details.append({
-                        "row": row_num,
-                        "value": round(val_float, 4),
-                        "z_score": round(z_score, 2),
-                        "is_extreme": is_extreme,
-                        "bound_violation": "below_lower" if val_float < lower_bound else "above_upper",
-                    })
+            if is_domain_violation or is_iqr_outlier or is_z_outlier:
+                row_num = idx + 1
+                anomalous_rows.append(row_num)
+
+                is_extreme = is_domain_violation or (val_float < extreme_lower or val_float > extreme_upper or z_score >= 4.0)
+                if is_extreme:
+                    has_extreme = True
+
+                if not bound_viol:
+                    bound_viol = "below_lower" if val_float < lower_bound else "above_upper"
+
+                anomaly_details.append({
+                    "row": row_num,
+                    "value": int(val_float) if val_float.is_integer() else round(val_float, 4),
+                    "z_score": round(z_score, 2),
+                    "is_extreme": is_extreme,
+                    "bound_violation": bound_viol,
+                    "reason": domain_reason,
+                })
 
         if anomalous_rows:
             pct = round((len(anomalous_rows) / total_rows) * 100, 2)
             severity = "warning" if has_extreme else "info"
 
             sample_strings = [
-                f"Row {a['row']}: {a['value']} (Z={a['z_score']}, {'Extreme' if a['is_extreme'] else 'Mild'})"
+                f"Row {a['row']}: {a['value']} ({a.get('reason') or ('Z=' + str(a['z_score']) + ', ' + ('Extreme' if a['is_extreme'] else 'Mild'))})"
                 for a in anomaly_details[:5]
             ]
 
