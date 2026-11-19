@@ -19,8 +19,9 @@ def detect_missing_values(df: pd.DataFrame) -> List[QualityIssue]:
     if total_rows == 0:
         return issues
 
-    for col in df.columns:
-        series = df[col]
+    for col_idx in range(len(df.columns)):
+        series = df.iloc[:, col_idx]
+        col = df.columns[col_idx]
         null_mask = series.isna()
 
         empty_indices: List[int] = []

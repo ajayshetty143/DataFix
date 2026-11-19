@@ -19,7 +19,7 @@ def detect_duplicates(df: pd.DataFrame) -> List[QualityIssue]:
     # Also check if rows are duplicate across all feature columns excluding an ID column
     id_cols = [c for c in df.columns if str(c).lower() in ("id", "row_id", "record_id", "_id", "uuid")]
     feature_dup_mask = pd.Series(False, index=df.index)
-    if not exact_dup_mask.any() and id_cols and len(df.columns) > 1:
+    if not exact_dup_mask.any() and id_cols and len(df.columns) > len(id_cols):
         feature_df = df.drop(columns=id_cols)
         feature_dup_mask = feature_df.duplicated(keep=False)
 
@@ -41,7 +41,8 @@ def detect_duplicates(df: pd.DataFrame) -> List[QualityIssue]:
         sample_rows_data = []
         for cluster_key, row_nums in list(clusters.items())[:3]:
             sample_cluster_descriptions.append(f"Rows [{', '.join(map(str, row_nums))}]")
-            sample_rows_data.append(dict(zip(check_df.columns[:4], [str(v)[:25] for v in cluster_key[:4]])))
+            cols_to_show = [str(c) for c in check_df.columns[:4]]
+            sample_rows_data.append(dict(zip(cols_to_show, [str(v)[:25] for v in cluster_key[:4]])))
 
         dup_pct = round((total_dup_rows / total_rows) * 100, 2)
         severity = "critical" if dup_pct >= 25.0 else "warning"
@@ -79,18 +80,21 @@ def detect_duplicates(df: pd.DataFrame) -> List[QualityIssue]:
         )
 
     # 2. Potential / Near-Duplicate Detection (Casing & Whitespace Differences)
-    str_cols = [c for c in df.columns if df[c].dtype == "object" or isinstance(df[c].iloc[0] if len(df) > 0 else None, str)]
-    if str_cols:
+    str_col_indices = [
+        i for i in range(len(df.columns))
+        if df.iloc[:, i].dtype == "object" or isinstance(df.iloc[0, i] if len(df) > 0 else None, str)
+    ]
+    if str_col_indices:
         normalized_df = df.copy()
-        for c in str_cols:
-            normalized_df[c] = normalized_df[c].astype(str).str.strip().str.lower()
+        for idx in str_col_indices:
+            normalized_df.iloc[:, idx] = normalized_df.iloc[:, idx].astype(str).str.strip().str.lower()
 
         norm_dup_mask = normalized_df.duplicated(keep=False)
         near_dup_mask = norm_dup_mask & (~dup_mask)
 
         if near_dup_mask.any():
             near_dup_indices = [i + 1 for i, is_near in enumerate(near_dup_mask) if is_near]
-            
+
             near_clusters: Dict[tuple, List[int]] = {}
             for row_num in near_dup_indices:
                 row_key = tuple(str(x) for x in normalized_df.iloc[row_num - 1].values)

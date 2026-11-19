@@ -15,8 +15,12 @@ class Dataset(Base):
     total_columns = Column(Integer, nullable=False, default=0)
     profile_json = Column(Text, nullable=True)  # JSON string of profiler output
     quality_json = Column(Text, nullable=True)  # JSON string of quality analysis output
+    ai_detective_json = Column(Text, nullable=True)  # JSON string of Gemini AI recommendations
+    repaired_file_path = Column(String(500), nullable=True)  # Path to separate repaired working copy
+    repaired_at = Column(DateTime, nullable=True)  # Timestamp when repairs were last applied
+    validation_json = Column(Text, nullable=True)  # JSON string of post-repair validation comparison report
     created_at = Column(
-        DateTime, 
-        default=lambda: datetime.now(timezone.utc), 
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
         nullable=False
     )

@@ -11,6 +11,23 @@ from app.schemas.quality import (
     QualitySummaryResponse,
     QualityReportResponse,
 )
+from app.schemas.ai_detective import (
+    AIDetectiveRecommendation,
+    AIDetectiveReportResponse,
+)
+from app.schemas.repair import (
+    RepairResponse,
+    RepairUpdate,
+    RepairSummary,
+    RepairListResponse,
+    RepairResultItem,
+    RepairApplyResponse,
+)
+from app.schemas.validation import (
+    ValidationReportResponse,
+    AuditLogItem,
+    AuditLogResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -22,4 +39,15 @@ __all__ = [
     "QualityIssueResponse",
     "QualitySummaryResponse",
     "QualityReportResponse",
+    "AIDetectiveRecommendation",
+    "AIDetectiveReportResponse",
+    "RepairResponse",
+    "RepairUpdate",
+    "RepairSummary",
+    "RepairListResponse",
+    "RepairResultItem",
+    "RepairApplyResponse",
+    "ValidationReportResponse",
+    "AuditLogItem",
+    "AuditLogResponse",
 ]

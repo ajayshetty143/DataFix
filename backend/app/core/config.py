@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_FILE_SIZE_MB: int = 20
     ALLOWED_EXTENSIONS: List[str] = [".csv", ".xlsx", ".xls"]
+
+    # Gemini LLM configuration
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.1-flash-lite"
 
     # CORS origins
     BACKEND_CORS_ORIGINS: Union[List[str], str] = [
@@ -42,7 +46,7 @@ class Settings(BaseSettings):
         return []
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "backend/.env"),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",

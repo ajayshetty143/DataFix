@@ -1,22 +1,20 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from sqlalchemy import text, inspect
+from sqlalchemy.orm import Session
 from app.api.v1.api import api_router
+from app.api.v1.endpoints.health import get_health
 from app.core.config import settings
-from app.core.database import Base, engine
+from app.core.database import Base, engine, get_db, init_db
+from app.schemas.health import HealthResponse
+import app.models  # noqa: F401
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize database tables on startup
-    Base.metadata.create_all(bind=engine)
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE datasets ADD COLUMN quality_json TEXT"))
-            conn.commit()
-    except Exception:
-        pass  # Column already exists
+    # Ensure database tables and columns exist on startup
+    init_db()
     yield
 
 
@@ -50,3 +48,9 @@ def root():
         "docs": "/docs",
         "health": f"{settings.API_V1_STR}/health",
     }
+
+
+@app.get("/health", response_model=HealthResponse, tags=["Health"], include_in_schema=False)
+def root_health_alias(db: Session = Depends(get_db)):
+    """Convenience alias for /api/v1/health."""
+    return get_health(db=db)

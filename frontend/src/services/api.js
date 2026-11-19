@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:8000/api/v1' : '/api/v1');
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -87,6 +87,96 @@ export const datasetApi = {
   getQualityReport: async (datasetId) => {
     const response = await apiClient.get(`/datasets/${datasetId}/quality`);
     return response.data;
+  },
+
+  runAIDetective: async (datasetId) => {
+    const response = await apiClient.post(`/datasets/${datasetId}/ai-detective`);
+    return response.data;
+  },
+
+  getAIDetective: async (datasetId) => {
+    const response = await apiClient.get(`/datasets/${datasetId}/ai-detective`);
+    return response.data;
+  },
+
+  // Phase 5: Safe Data Repair Engine APIs
+  getRepairs: async (datasetId) => {
+    const response = await apiClient.get(`/datasets/${datasetId}/repairs`);
+    return response.data;
+  },
+
+  proposeRepairs: async (datasetId) => {
+    const response = await apiClient.post(`/datasets/${datasetId}/repairs/propose`);
+    return response.data;
+  },
+
+  updateRepair: async (datasetId, repairId, proposedValue) => {
+    const response = await apiClient.patch(
+      `/datasets/${datasetId}/repairs/${repairId}`,
+      { proposed_value: proposedValue }
+    );
+    return response.data;
+  },
+
+  approveRepair: async (datasetId, repairId) => {
+    const response = await apiClient.post(
+      `/datasets/${datasetId}/repairs/${repairId}/approve`
+    );
+    return response.data;
+  },
+
+  rejectRepair: async (datasetId, repairId) => {
+    const response = await apiClient.post(
+      `/datasets/${datasetId}/repairs/${repairId}/reject`
+    );
+    return response.data;
+  },
+
+  applyApprovedRepairs: async (datasetId) => {
+    const response = await apiClient.post(
+      `/datasets/${datasetId}/repairs/apply-approved`
+    );
+    return response.data;
+  },
+
+  getRepairedPreview: async (datasetId, page = 1, pageSize = 20) => {
+    const response = await apiClient.get(
+      `/datasets/${datasetId}/repairs/preview`,
+      { params: { page, page_size: pageSize } }
+    );
+    return response.data;
+  },
+
+  getRepairedDownloadUrl: (datasetId) => {
+    return `${API_BASE_URL}/datasets/${datasetId}/repairs/download`;
+  },
+
+  // Phase 6: Validation, Audit Log & Export APIs
+  getValidation: async (datasetId) => {
+    const response = await apiClient.get(`/datasets/${datasetId}/validation`);
+    return response.data;
+  },
+
+  runValidation: async (datasetId) => {
+    const response = await apiClient.post(`/datasets/${datasetId}/validate`);
+    return response.data;
+  },
+
+  getAuditLog: async (datasetId) => {
+    const response = await apiClient.get(`/datasets/${datasetId}/audit-log`);
+    return response.data;
+  },
+
+  getCleanedCsvDownloadUrl: (datasetId) => {
+    return `${API_BASE_URL}/datasets/${datasetId}/export/cleaned-csv`;
+  },
+
+  getQualityReportDownloadUrl: (datasetId, format = 'json') => {
+    return `${API_BASE_URL}/datasets/${datasetId}/export/report?format=${format}`;
+  },
+
+  getAuditLogDownloadUrl: (datasetId, format = 'csv') => {
+    return `${API_BASE_URL}/datasets/${datasetId}/export/audit-log?format=${format}`;
   },
 };
 

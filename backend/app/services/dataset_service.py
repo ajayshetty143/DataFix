@@ -129,8 +129,8 @@ def clean_row_value(val: Any) -> Any:
 
 
 def paginate_dataframe(
-    df: pd.DataFrame, 
-    page: int = 1, 
+    df: pd.DataFrame,
+    page: int = 1,
     page_size: int = 20
 ) -> Dict[str, Any]:
     """Extract paginated slice from DataFrame with sanitized JSON records."""
@@ -144,13 +144,15 @@ def paginate_dataframe(
 
     subset = df.iloc[start_idx:end_idx]
     columns = [str(c) for c in df.columns]
-    column_types = {str(c): detect_column_type(df[c]) for c in df.columns}
+    column_types = {str(df.columns[c_idx]): detect_column_type(df.iloc[:, c_idx]) for c_idx in range(len(df.columns))}
 
     rows = []
     for idx, (_, row) in enumerate(subset.iterrows()):
         row_dict = {"_row_index": start_idx + idx + 1}
-        for col in df.columns:
-            row_dict[str(col)] = clean_row_value(row[col])
+        for c_idx in range(len(df.columns)):
+            col_name = str(df.columns[c_idx])
+            key = col_name if col_name not in row_dict else f"{col_name}_{c_idx}"
+            row_dict[key] = clean_row_value(row.iloc[c_idx])
         rows.append(row_dict)
 
     return {
@@ -206,4 +208,3 @@ def get_dataset_record(db: Session, dataset_id: str) -> Dataset:
 def list_dataset_records(db: Session, limit: int = 50) -> List[Dataset]:
     """List recent dataset uploads."""
     return db.query(Dataset).order_by(Dataset.created_at.desc()).limit(limit).all()
-

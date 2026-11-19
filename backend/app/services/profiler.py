@@ -19,7 +19,7 @@ def format_file_size(size_bytes: int) -> str:
 def detect_column_type(series: pd.Series) -> str:
     """Detect intuitive semantic column data type."""
     dtype_str = str(series.dtype).lower()
-    
+
     if "bool" in dtype_str:
         return "boolean"
     if "datetime" in dtype_str or "timestamp" in dtype_str:
@@ -32,7 +32,7 @@ def detect_column_type(series: pd.Series) -> str:
         if not non_null.empty and (non_null % 1 == 0).all():
             return "integer"
         return "float"
-    
+
     # For object/string dtypes, check if values could be datetime or boolean
     non_null = series.dropna().astype(str).str.strip()
     if non_null.empty:
@@ -64,8 +64,9 @@ def profile_dataframe(df: pd.DataFrame, file_size: int, filename: str, dataset_i
 
     column_profiles = []
 
-    for col in df.columns:
-        series = df[col]
+    for col_idx in range(len(df.columns)):
+        series = df.iloc[:, col_idx]
+        col = df.columns[col_idx]
         col_type = detect_column_type(series)
         null_count = int(series.isna().sum())
         null_percentage = round((null_count / total_rows * 100), 2) if total_rows > 0 else 0.0
@@ -76,6 +77,8 @@ def profile_dataframe(df: pd.DataFrame, file_size: int, filename: str, dataset_i
         stats = None
         if is_numerical:
             num_series = pd.to_numeric(series, errors="coerce").dropna()
+            # Also exclude infinite values from statistical aggregates
+            num_series = num_series[np.isfinite(num_series)]
             if not num_series.empty:
                 mean_val = float(num_series.mean())
                 median_val = float(num_series.median())
@@ -99,7 +102,10 @@ def profile_dataframe(df: pd.DataFrame, file_size: int, filename: str, dataset_i
             if isinstance(val, (np.integer, int)):
                 sample_vals.append(int(val))
             elif isinstance(val, (np.floating, float)):
-                sample_vals.append(round(float(val), 4))
+                if math.isfinite(val):
+                    sample_vals.append(round(float(val), 4))
+                else:
+                    sample_vals.append(str(val))
             else:
                 sample_vals.append(str(val))
 

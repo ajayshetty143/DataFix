@@ -6,24 +6,42 @@ import DatasetOverview from './components/DatasetOverview';
 import ColumnProfilingTable from './components/ColumnProfilingTable';
 import DatasetPreviewTable from './components/DatasetPreviewTable';
 import QualityDashboard from './components/QualityDashboard';
-import { 
-  Sparkles, 
-  Table, 
-  BarChart2, 
-  ShieldAlert, 
-  Activity, 
-  History, 
-  FileSpreadsheet, 
-  ArrowRight
+import AIDetectiveDashboard from './components/AIDetectiveDashboard';
+import RepairCenter from './components/RepairCenter';
+import ValidationExport from './components/ValidationExport';
+import {
+  Sparkles,
+  Table,
+  BarChart2,
+  ShieldAlert,
+  Activity,
+  History,
+  FileSpreadsheet,
+  ArrowRight,
+  Wrench,
+  CheckCircle2,
+  Download
 } from 'lucide-react';
-import { datasetApi } from './services/api';
+import { datasetApi, healthApi } from './services/api';
 
 export default function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [activeDataset, setActiveDataset] = useState(null);
-  const [activeTab, setActiveTab] = useState('quality'); // 'quality' | 'preview' | 'profiling'
+  const [activeTab, setActiveTab] = useState('quality'); // 'quality' | 'detective' | 'repairs' | 'preview' | 'profiling'
+  const [selectedIssueId, setSelectedIssueId] = useState(null);
   const [recentDatasets, setRecentDatasets] = useState([]);
   const [showHealthDiagnostics, setShowHealthDiagnostics] = useState(false);
+
+  const checkHealth = async () => {
+    try {
+      const data = await healthApi.getHealth();
+      const connected = data && (data.status === 'healthy' || data.database_status === 'connected');
+      setIsConnected(Boolean(connected));
+    } catch (err) {
+      console.warn('Backend health check error:', err);
+      setIsConnected(false);
+    }
+  };
 
   const fetchRecentDatasets = async () => {
     try {
@@ -35,7 +53,12 @@ export default function App() {
   };
 
   useEffect(() => {
+    checkHealth();
     fetchRecentDatasets();
+
+    // Check health every 15 seconds to ensure status stays in sync
+    const interval = setInterval(checkHealth, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleUploadSuccess = (datasetData) => {
@@ -56,10 +79,24 @@ export default function App() {
 
   const handleReset = () => {
     setActiveDataset(null);
+    setSelectedIssueId(null);
   };
 
   const handleNavigateToPreview = (issue) => {
     setActiveTab('preview');
+  };
+
+  const handleConsultAIDetective = (issueId) => {
+    setSelectedIssueId(issueId);
+    setActiveTab('detective');
+  };
+
+  const handleNavigateToQuality = () => {
+    setActiveTab('quality');
+  };
+
+  const handleNavigateToRepairs = () => {
+    setActiveTab('repairs');
   };
 
   return (
@@ -70,15 +107,15 @@ export default function App() {
         {/* Hero Section */}
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 p-8 sm:p-10 shadow-2xl">
           <div className="relative z-10 max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-4">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Phase 3: Intelligent Data Quality Engine</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-500/10 via-violet-500/10 to-indigo-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold mb-4">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Full Lifecycle: Detection &bull; Gemini AI &bull; Safe Repair &bull; Validation &bull; Export</span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
-              DataFix <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Quality Engine</span>
+              DataFix <span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-purple-400 bg-clip-text text-transparent">AI Detective & Remediation Suite</span>
             </h1>
             <p className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed">
-              Deterministic detection for missing data, duplicate records, invalid formats, categorical inconsistencies, and statistical anomalies. Zero data alteration — complete analytical visibility.
+              Deterministic quality detection meets Google Gemini AI reasoning: diagnose root causes, receive confidence-scored remediation recommendations, apply safe verified repairs, and export certified deliverables.
             </p>
           </div>
         </div>
@@ -163,6 +200,51 @@ export default function App() {
               </button>
 
               <button
+                onClick={() => setActiveTab('detective')}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                  activeTab === 'detective'
+                    ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-600/25'
+                    : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300'
+                }`}
+              >
+                <Sparkles className="w-4 h-4 text-violet-300" />
+                <span>Gemini AI Detective</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-950 text-violet-200 border border-violet-700/50 uppercase font-bold font-mono">
+                  AI
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('repairs')}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                  activeTab === 'repairs'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/25'
+                    : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300'
+                }`}
+              >
+                <Wrench className="w-4 h-4 text-emerald-300" />
+                <span>Repair Center</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-200 border border-emerald-700/50 uppercase font-bold font-mono">
+                  Safe
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('validation')}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                  activeTab === 'validation'
+                    ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg shadow-teal-600/25'
+                    : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4 text-teal-300" />
+                <span>Validation & Export</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-950 text-teal-200 border border-teal-700/50 uppercase font-bold font-mono">
+                  Phase 6
+                </span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('preview')}
                 className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
                   activeTab === 'preview'
@@ -198,15 +280,44 @@ export default function App() {
               <QualityDashboard
                 datasetId={activeDataset.id}
                 onNavigateToPreview={handleNavigateToPreview}
+                onConsultAIDetective={handleConsultAIDetective}
+                onNavigateToRepairs={handleNavigateToRepairs}
               />
             )}
 
-            {/* Tab 2: Dataset Paginated Preview */}
+            {/* Tab 2: Gemini AI Detective Dashboard */}
+            {activeTab === 'detective' && (
+              <AIDetectiveDashboard
+                datasetId={activeDataset.id}
+                initialSelectedIssueId={selectedIssueId}
+                onNavigateToQuality={handleNavigateToQuality}
+                onNavigateToRepairs={handleNavigateToRepairs}
+              />
+            )}
+
+            {/* Tab 3: Safe Repair Center */}
+            {activeTab === 'repairs' && (
+              <RepairCenter
+                datasetId={activeDataset.id}
+                onNavigateToValidation={() => setActiveTab('validation')}
+              />
+            )}
+
+            {/* Tab 4: Validation & Deliverables Export */}
+            {activeTab === 'validation' && (
+              <ValidationExport
+                datasetId={activeDataset.id}
+                onNavigateToRepairs={handleNavigateToRepairs}
+                onNavigateToPreview={() => setActiveTab('preview')}
+              />
+            )}
+
+            {/* Tab 4: Dataset Paginated Preview */}
             {activeTab === 'preview' && (
               <DatasetPreviewTable datasetId={activeDataset.id} />
             )}
 
-            {/* Tab 3: Column Schema & Profiling */}
+            {/* Tab 5: Column Schema & Profiling */}
             {activeTab === 'profiling' && (
               <ColumnProfilingTable profiles={activeDataset.column_profiles} />
             )}

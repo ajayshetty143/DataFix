@@ -8,6 +8,7 @@ from app.services.detection.duplicate_detector import detect_duplicates
 from app.services.detection.format_detector import detect_invalid_formats
 from app.services.detection.inconsistency_detector import detect_inconsistencies
 from app.services.detection.anomaly_detector import detect_statistical_anomalies
+from app.services.detection.heatmap import generate_quality_heatmap
 
 
 class QualityDetectionEngine:
@@ -18,9 +19,9 @@ class QualityDetectionEngine:
 
     @classmethod
     def analyze(
-        cls, 
-        df: pd.DataFrame, 
-        dataset_id: str, 
+        cls,
+        df: pd.DataFrame,
+        dataset_id: str,
         filename: str
     ) -> Dict[str, Any]:
         raw_issues: List[QualityIssue] = []
@@ -105,11 +106,15 @@ class QualityDetectionEngine:
         raw_score = (clean_rows_ratio * 70.0) + max(0.0, (30.0 - severity_penalties))
         quality_score = round(max(0.0, min(100.0, raw_score)), 1) if total_rows > 0 else 100.0
 
+        # Generate column-level data quality heatmap matrix
+        heatmap_matrix = generate_quality_heatmap(df, indexed_issues, total_rows)
+
         return {
             "dataset_id": dataset_id,
             "filename": filename,
             "total_rows": total_rows,
             "total_columns": total_cols,
+            "columns": [str(c) for c in df.columns],
             "analyzed_at": datetime.now(timezone.utc).isoformat(),
             "summary": {
                 "total_issues": total_issues,
@@ -119,5 +124,6 @@ class QualityDetectionEngine:
                 "by_category": by_category,
                 "by_severity": by_severity,
                 "issues": indexed_issues,
+                "heatmap": heatmap_matrix,
             },
         }

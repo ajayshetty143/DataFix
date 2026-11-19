@@ -19,30 +19,101 @@ PHONE_REGEX = re.compile(
 )
 
 
+def _get_name_tokens(col_name: str) -> set:
+    """Extract individual words/tokens from a column name."""
+    return set(re.split(r'[^a-zA-Z0-9]+', col_name.lower()))
+
+
 def is_email_column(col_name: str, sample_values: List[str]) -> bool:
     """Check if column is intended to contain email addresses."""
     col_lower = col_name.lower()
-    if any(k in col_lower for k in ["email", "mail", "e-mail", "email_address", "contact_email"]):
-        return True
+    tokens = _get_name_tokens(col_name)
+
+    name_matches = bool(
+        tokens & {"email", "emails"} or
+        col_lower.endswith(("_email", "_mail")) or
+        col_lower.startswith("email")
+    )
+    if name_matches:
+        if not sample_values:
+            return True
+        # Verify at least one value has '@' and no spaces
+        return any("@" in val and " " not in val.strip() for val in sample_values)
+
     if not sample_values:
         return False
-    # If 30%+ of sample values look like emails
-    match_count = sum(1 for val in sample_values if "@" in val and "." in val)
+
+    # Data-driven heuristic: >= 30% of sample values look like standalone emails
+    match_count = sum(1 for val in sample_values if "@" in val and "." in val and " " not in val.strip())
     return (match_count / len(sample_values)) >= 0.30
+
+
+def is_phone_column(col_name: str, sample_values: List[str]) -> bool:
+    """Check if column is intended to contain phone numbers."""
+    # Disambiguate against dates: if column matches date heuristics, it is not a phone column
+    if is_date_column(col_name, sample_values):
+        return False
+
+    col_lower = col_name.lower()
+    tokens = _get_name_tokens(col_name)
+    phone_tokens = {"phone", "mobile", "cell", "tel", "telephone", "cellphone", "fax", "contact_no"}
+
+    name_matches = bool(
+        tokens & phone_tokens or
+        col_lower.endswith(("_phone", "_mobile", "_cell", "_tel")) or
+        col_lower.startswith(("phone", "mobile", "tel"))
+    )
+    if name_matches:
+        if not sample_values:
+            return True
+        return any(any(c.isdigit() for c in val) for val in sample_values)
+
+    if not sample_values:
+        return False
+
+    def looks_like_phone(val: str) -> bool:
+        v = val.strip()
+        # Exclude dates that happen to match phone regex
+        if DATE_FORMAT_REGEX.search(v):
+            return False
+        digits = [c for c in v if c.isdigit()]
+        return 7 <= len(digits) <= 15 and bool(PHONE_REGEX.match(v))
+
+    match_count = sum(1 for val in sample_values if looks_like_phone(val))
+    return (match_count / len(sample_values)) >= 0.40
 
 
 def is_date_column(col_name: str, sample_values: List[str]) -> bool:
     """Check if column is intended to contain date or datetime entries."""
     col_lower = col_name.lower()
-    date_keywords = [
+    tokens = _get_name_tokens(col_name)
+    date_tokens = {
         "date", "dob", "birth", "created", "updated", "timestamp",
-        "joined", "join_date", "expiry", "deadline", "hire_date", "time"
-    ]
-    if any(k in col_lower for k in date_keywords):
-        return True
+        "joined", "expiry", "deadline", "hire_date", "datetime"
+    }
+
+    name_matches = bool(
+        tokens & date_tokens or
+        col_lower.endswith(("_date", "_at", "_time")) or
+        col_lower.startswith("date_")
+    )
+    if name_matches:
+        if not sample_values:
+            return True
+        for v in sample_values:
+            if DATE_FORMAT_REGEX.search(v.strip()):
+                return True
+            try:
+                p = pd.to_datetime(v.strip(), errors="coerce", format="mixed")
+                if pd.notna(p):
+                    return True
+            except Exception:
+                pass
+        return False
+
     if not sample_values:
         return False
-    # If 40%+ of sample values match date pattern
+
     match_count = sum(1 for val in sample_values if DATE_FORMAT_REGEX.search(val.strip()))
     return (match_count / len(sample_values)) >= 0.40
 
@@ -50,18 +121,35 @@ def is_date_column(col_name: str, sample_values: List[str]) -> bool:
 def is_numeric_string_column(col_name: str, sample_values: List[str]) -> bool:
     """Check if column is intended to be purely numeric (e.g. price, quantity, zip, age)."""
     col_lower = col_name.lower()
-    num_keywords = [
-        "price", "amount", "salary", "cost", "total", "quantity", 
+    tokens = _get_name_tokens(col_name)
+    num_tokens = {
+        "price", "amount", "salary", "cost", "total", "quantity",
         "count", "age", "zip", "postal", "year", "score", "revenue", "income"
-    ]
-    if any(k in col_lower for k in num_keywords):
-        return True
+    }
+
+    name_matches = bool(
+        tokens & num_tokens or
+        col_lower.endswith(("_amount", "_price", "_cost", "_count", "_score", "_qty"))
+    )
+    if name_matches:
+        if not sample_values:
+            return True
+        match_count = 0
+        for v in sample_values:
+            clean = re.sub(r'[\$,€£%\s]', '', v)
+            try:
+                float(clean)
+                match_count += 1
+            except ValueError:
+                pass
+        return (match_count / len(sample_values)) >= 0.20
+
     if not sample_values:
         return False
-    # If majority of sample values are numbers or numeric with currency
+
     match_count = 0
     for v in sample_values:
-        clean = re.sub(r'[\$,€£\s]', '', v)
+        clean = re.sub(r'[\$,€£%\s]', '', v)
         try:
             float(clean)
             match_count += 1
@@ -73,8 +161,8 @@ def is_numeric_string_column(col_name: str, sample_values: List[str]) -> bool:
 def validate_email(val: str) -> Optional[str]:
     """Return reason if email is invalid, else None."""
     val = val.strip()
-    if not val:
-        return None  # Empty handled by missing detector
+    if not val or val.lower() in ("null", "none", "n/a", "-", "nil", "unknown"):
+        return None
     if not EMAIL_REGEX.match(val):
         if "@" not in val:
             return "Missing '@' symbol"
@@ -86,17 +174,32 @@ def validate_email(val: str) -> Optional[str]:
     return None
 
 
+def validate_phone(val: str) -> Optional[str]:
+    """Return reason if phone number string is invalid, else None."""
+    val = val.strip()
+    if not val or val.lower() in ("null", "none", "n/a", "-", "nil", "unknown"):
+        return None
+    if any(c.isalpha() for c in val):
+        return f"Contains alphabetical characters in phone field: '{val}'"
+    digits = [c for c in val if c.isdigit()]
+    if len(digits) < 7:
+        return f"Phone number has too few digits ({len(digits)} digits; expected 7-15): '{val}'"
+    if len(digits) > 15:
+        return f"Phone number exceeds maximum standard length ({len(digits)} digits; expected 7-15): '{val}'"
+    if not PHONE_REGEX.match(val):
+        return f"Invalid phone format structure: '{val}'"
+    return None
+
+
 def validate_date(val: str) -> Optional[str]:
     """Return reason if date string is unparseable or invalid, else None."""
     val = val.strip()
-    if not val or val.lower() in ("null", "none", "n/a", "-"):
+    if not val or val.lower() in ("null", "none", "n/a", "-", "nil", "unknown"):
         return None
     try:
-        # Use pandas mixed parser
         parsed = pd.to_datetime(val, errors="coerce", format="mixed")
         if pd.isna(parsed):
             return f"Unparseable date expression: '{val}'"
-        # Check for realistic year bounds (1850 - 2150)
         if parsed.year < 1850 or parsed.year > 2150:
             return f"Year {parsed.year} is outside plausible range (1850-2150)"
         return None
@@ -107,13 +210,11 @@ def validate_date(val: str) -> Optional[str]:
 def validate_numeric(val: str) -> Optional[str]:
     """Return reason if numeric string contains invalid characters, else None."""
     val = val.strip()
-    if not val or val.lower() in ("null", "none", "n/a", "-"):
+    if not val or val.lower() in ("null", "none", "n/a", "-", "nil", "unknown"):
         return None
-    # Check if contains letters or corrupted symbols
     clean = re.sub(r'[\$,€£%]', '', val).strip()
     try:
         float(clean)
-        # Check if had currency symbols mixed in
         if re.search(r'[\$,€£%]', val):
             return f"Contains currency or percentage symbol in numeric field: '{val}'"
         return None
@@ -123,7 +224,7 @@ def validate_numeric(val: str) -> Optional[str]:
 
 def detect_invalid_formats(df: pd.DataFrame) -> List[QualityIssue]:
     """
-    Detect format violations in columns that represent emails, dates, or numeric strings.
+    Detect format violations in columns that represent emails, phones, dates, or numeric strings.
     Does not assume every string column is an email or date.
     """
     issues: List[QualityIssue] = []
@@ -131,8 +232,10 @@ def detect_invalid_formats(df: pd.DataFrame) -> List[QualityIssue]:
     if total_rows == 0:
         return issues
 
-    for col in df.columns:
-        series = df[col]
+    for col_idx in range(len(df.columns)):
+        series = df.iloc[:, col_idx]
+        col_str = str(df.columns[col_idx])
+
         # Only inspect object/string columns or mixed types
         if series.dtype != "object" and not pd.api.types.is_string_dtype(series):
             continue
@@ -142,9 +245,7 @@ def detect_invalid_formats(df: pd.DataFrame) -> List[QualityIssue]:
         if non_null_series.empty:
             continue
 
-        # Extract sample values (up to 30) for heuristic check
         sample_vals = non_null_series.head(30).tolist()
-        col_str = str(col)
 
         # 1. Email Format Check
         if is_email_column(col_str, sample_vals):
@@ -187,7 +288,7 @@ def detect_invalid_formats(df: pd.DataFrame) -> List[QualityIssue]:
                         },
                     )
                 )
-            continue  # Don't check for dates if it's an email column
+            continue
 
         # 2. Date Format Check
         if is_date_column(col_str, sample_vals):
@@ -231,7 +332,53 @@ def detect_invalid_formats(df: pd.DataFrame) -> List[QualityIssue]:
                 )
             continue
 
-        # 3. Numeric String Check
+        # 3. Phone Number Format Check
+        if is_phone_column(col_str, sample_vals):
+            invalid_phone_rows: List[int] = []
+            sample_invalid_phones: List[str] = []
+            phone_reasons: List[str] = []
+
+            for idx, raw_val in enumerate(series):
+                if pd.isna(raw_val):
+                    continue
+                val_str = str(raw_val).strip()
+                if not val_str:
+                    continue
+                reason = validate_phone(val_str)
+                if reason:
+                    invalid_phone_rows.append(idx + 1)
+                    if len(sample_invalid_phones) < 5:
+                        sample_invalid_phones.append(f"Row {idx + 1}: '{val_str}' ({reason})")
+                    if reason not in phone_reasons and len(phone_reasons) < 3:
+                        phone_reasons.append(reason)
+
+            if invalid_phone_rows:
+                pct = round((len(invalid_phone_rows) / total_rows) * 100, 2)
+                issues.append(
+                    QualityIssue(
+                        id="",
+                        category="invalid_format",
+                        severity="warning",
+                        column=col_str,
+                        title=f"Invalid Phone Numbers in '{col_str}'",
+                        description=(
+                            f"Detected {len(invalid_phone_rows)} invalid phone number(s) ({pct}%) in '{col_str}'. "
+                            f"Violations: {'; '.join(phone_reasons)}."
+                        ),
+                        row_indices=invalid_phone_rows,
+                        affected_count=len(invalid_phone_rows),
+                        sample_values=sample_invalid_phones,
+                        suggested_action="Standardize phone numbers using E.164 or canonical international format.",
+                        metadata={
+                            "expected_format": "+1-555-010-0199 or 10-15 digits",
+                            "invalid_count": len(invalid_phone_rows),
+                            "invalid_percentage": pct,
+                        },
+                    )
+                )
+            continue
+
+        # 4. Numeric String Check
         if is_numeric_string_column(col_str, sample_vals):
             invalid_num_rows: List[int] = []
             sample_invalid_nums: List[str] = []

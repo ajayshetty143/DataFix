@@ -24,7 +24,7 @@ export default function Navbar({ isConnected }) {
           <div className="flex items-center space-x-2 text-xs px-3 py-1.5 rounded-lg border bg-slate-800/60 border-slate-700/60">
             <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
             <span className="text-slate-300 font-medium">
-              {isConnected ? 'Backend Online' : 'Backend Disconnected'}
+              {isConnected ? 'Backend Connected' : 'Backend Disconnected'}
             </span>
           </div>
 
@@ -41,4 +41,3 @@ export default function Navbar({ isConnected }) {
     </header>
   );
 }
-

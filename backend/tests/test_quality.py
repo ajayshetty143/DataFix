@@ -51,7 +51,7 @@ def test_duplicate_detector(messy_df):
 
 def test_format_detector_and_false_positives(messy_df):
     issues = detect_invalid_formats(messy_df)
-    
+
     # Verify invalid emails detected
     email_issue = next((i for i in issues if i.column == "email"), None)
     assert email_issue is not None

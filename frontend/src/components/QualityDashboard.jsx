@@ -1,27 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ShieldAlert, 
-  ShieldCheck, 
-  AlertTriangle, 
-  Info, 
-  XCircle, 
-  CheckCircle2, 
-  Filter, 
-  Search, 
-  RotateCw, 
-  Layers, 
-  Copy, 
-  Calendar, 
-  Type, 
-  TrendingUp, 
-  FileText, 
-  ChevronRight, 
+import {
+  ShieldAlert,
+  ShieldCheck,
+  AlertTriangle,
+  Info,
+  XCircle,
+  CheckCircle2,
+  Filter,
+  Search,
+  RotateCw,
+  Layers,
+  Copy,
+  Calendar,
+  Type,
+  TrendingUp,
+  FileText,
+  ChevronRight,
   X,
   ExternalLink,
   SlidersHorizontal,
-  HelpCircle
+  HelpCircle,
+  Sparkles,
+  Wrench,
+  Grid
 } from 'lucide-react';
 import { datasetApi } from '../services/api';
+import DataQualityHeatmap from './DataQualityHeatmap';
 
 const CATEGORY_META = {
   missing_value: {
@@ -69,7 +73,7 @@ const SEVERITY_META = {
   },
 };
 
-export default function QualityDashboard({ datasetId, onNavigateToPreview }) {
+export default function QualityDashboard({ datasetId, onNavigateToPreview, onConsultAIDetective, onNavigateToRepairs }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -287,6 +291,26 @@ export default function QualityDashboard({ datasetId, onNavigateToPreview }) {
         </div>
       </div>
 
+      {/* Interactive Data Quality Heatmap Matrix */}
+      <DataQualityHeatmap
+        heatmap={summary?.heatmap || []}
+        totalRows={report?.total_rows || 0}
+        onSelectIssue={(issueId) => {
+          const matched = summary?.issues?.find((i) => i.id === issueId);
+          if (matched) {
+            setSelectedIssue(matched);
+            setTimeout(() => {
+              const el = document.getElementById(`issue-card-${issueId}`);
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }, 50);
+          }
+        }}
+        onConsultAIDetective={onConsultAIDetective}
+        onNavigateToRepairs={onNavigateToRepairs}
+      />
+
       {/* Main Analysis Section: Filter Bar + 2-Column Inspector */}
       <div className="space-y-4">
         {/* Filter Controls Bar */}
@@ -353,6 +377,7 @@ export default function QualityDashboard({ datasetId, onNavigateToPreview }) {
                 return (
                   <div
                     key={issue.id}
+                    id={`issue-card-${issue.id}`}
                     onClick={() => setSelectedIssue(issue)}
                     className={`p-4 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
@@ -469,16 +494,38 @@ export default function QualityDashboard({ datasetId, onNavigateToPreview }) {
                   </div>
                 )}
 
-                {/* Action Trigger */}
-                {onNavigateToPreview && (
-                  <button
-                    onClick={() => onNavigateToPreview(selectedIssue)}
-                    className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition cursor-pointer shadow-lg shadow-indigo-600/20"
-                  >
-                    <span>Inspect Records in Data Preview</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                {/* Action Triggers */}
+                <div className="space-y-2 pt-1">
+                  {onConsultAIDetective && (
+                    <button
+                      onClick={() => onConsultAIDetective(selectedIssue.id)}
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-semibold transition cursor-pointer shadow-lg shadow-violet-600/20"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Consult Gemini AI Detective</span>
+                    </button>
+                  )}
+
+                  {onNavigateToRepairs && (
+                    <button
+                      onClick={onNavigateToRepairs}
+                      className="w-full inline-flex items-center justify-center gap-2 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition cursor-pointer border border-slate-700/80"
+                    >
+                      <Wrench className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Review in Safe Repair Center</span>
+                    </button>
+                  )}
+
+                  {onNavigateToPreview && (
+                    <button
+                      onClick={() => onNavigateToPreview(selectedIssue)}
+                      className="w-full inline-flex items-center justify-center gap-2 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition cursor-pointer border border-slate-700/80"
+                    >
+                      <span>Inspect Records in Data Preview</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="bg-slate-800/30 border border-slate-800 rounded-3xl p-8 text-center text-slate-500 text-xs">

@@ -25,6 +25,7 @@ class QualitySummaryResponse(BaseModel):
     by_category: Dict[str, int]
     by_severity: Dict[str, int]
     issues: List[QualityIssueResponse]
+    heatmap: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class QualityReportResponse(BaseModel):
@@ -32,5 +33,6 @@ class QualityReportResponse(BaseModel):
     filename: str
     total_rows: int
     total_columns: int
+    columns: List[str] = Field(default_factory=list)
     analyzed_at: datetime
     summary: QualitySummaryResponse
