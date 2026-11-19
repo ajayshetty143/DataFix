@@ -9,6 +9,7 @@ from app.schemas.dataset import (
     PaginatedPreviewResponse,
     DatasetListItem,
 )
+from app.schemas.quality import QualityReportResponse
 from app.services.dataset_service import (
     save_uploaded_file,
     load_dataframe_from_file,
@@ -18,6 +19,7 @@ from app.services.dataset_service import (
     list_dataset_records,
 )
 from app.services.profiler import profile_dataframe, format_file_size
+from app.services.detection.engine import QualityDetectionEngine
 
 router = APIRouter()
 
@@ -47,7 +49,14 @@ async def upload_dataset(
         dataset_id=dataset_id,
     )
 
-    # 4. Save metadata into SQLite
+    # 4. Run data quality detection engine automatically
+    quality_data = QualityDetectionEngine.analyze(
+        df=df,
+        dataset_id=dataset_id,
+        filename=file.filename or "unknown",
+    )
+
+    # 5. Save metadata into SQLite
     record = save_dataset_record(
         db=db,
         dataset_id=dataset_id,
@@ -59,6 +68,11 @@ async def upload_dataset(
         total_columns=profile_data["total_columns"],
         profile_data=profile_data,
     )
+
+    # Save initial quality json
+    record.quality_json = json.dumps(quality_data)
+    db.commit()
+    db.refresh(record)
 
     return DatasetProfileResponse(
         id=record.id,
@@ -128,6 +142,63 @@ def get_dataset_preview(
         column_types=paginated["column_types"],
         rows=paginated["rows"],
     )
+
+
+@router.post(
+    "/{dataset_id}/analyze",
+    response_model=QualityReportResponse,
+    summary="Run Data Quality Analysis",
+    description="Execute the 5-dimension intelligent data quality detection engine on the dataset.",
+)
+def analyze_dataset_quality(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+):
+    record = get_dataset_record(db, dataset_id)
+    df = load_dataframe_from_file(record.file_path, record.file_type)
+
+    quality_data = QualityDetectionEngine.analyze(
+        df=df,
+        dataset_id=record.id,
+        filename=record.filename,
+    )
+
+    record.quality_json = json.dumps(quality_data)
+    db.commit()
+    db.refresh(record)
+
+    return quality_data
+
+
+@router.get(
+    "/{dataset_id}/quality",
+    response_model=QualityReportResponse,
+    summary="Get Data Quality Analysis Report",
+    description="Retrieve the latest data quality report for the dataset.",
+)
+def get_dataset_quality(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+):
+    record = get_dataset_record(db, dataset_id)
+    if record.quality_json:
+        try:
+            return json.loads(record.quality_json)
+        except Exception:
+            pass
+
+    # If not yet analyzed, run analysis on demand
+    df = load_dataframe_from_file(record.file_path, record.file_type)
+    quality_data = QualityDetectionEngine.analyze(
+        df=df,
+        dataset_id=record.id,
+        filename=record.filename,
+    )
+    record.quality_json = json.dumps(quality_data)
+    db.commit()
+    db.refresh(record)
+
+    return quality_data
 
 
 @router.get(

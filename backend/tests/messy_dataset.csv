@@ -1,0 +1,16 @@
+id,full_name,email,signup_date,city,status,salary,company,notes
+1,Alice Walker,alice@example.com,2023-01-15,Bangalore,Active,75000,Acme Corp,Normal engineering note
+2,Bob Vance,bob.vance@refrigeration.com,2022-06-20,bangalore,active,82000,Acme Corp,Customer service representative
+3,Charlie Day,charlie.day@paddys.com,2021-11-05,New York,Active,65000,Acme Corp,Bar manager and logistics
+4,Diana Prince,diana@@themyscira.com,2020-03-12,BANGALORE,ACTIVE,95000,Acme Corp,Senior executive ambassador
+5,Evan Wright,evan.wright@example.com,2022-09-18,New York ,active,72000,Acme Corp,Investigative journalist
+6,Fiona Gallagher,fiona@chicago,2023-13-45,new york,Pending,58000,Acme Corp,Hospitality shift manager
+7,George Costanza,,2019-07-23,Bangalore,Active,68000,Acme Corp,Assistant to traveling secretary
+8,Hannah Abbott,hannah@hufflepuff.edu,not_a_date,London,Active,71000,Acme Corp,Botanist and herbalist
+9,Ian Malcolm,ian.malcolm@jurassic.org,2018-12-01,London,Inactive,120000,Acme Corp,Chaos theory mathematician
+3,Charlie Day,charlie.day@paddys.com,2021-11-05,New York,Active,65000,Acme Corp,Bar manager and logistics
+11,Kevin Malone,kevin@dunder.com,2020-10-10,Bangalore,   ,15000000,Acme Corp,Chili specialist and accountant
+12,Evan Wright,evan.wright@example.com,2022-09-18,new york,Active,72000,Acme Corp,Investigative journalist
+13,Laura Croft,missing_at_symbol.com,2021-04-25,London,Active,88000,Acme Corp,Archaeology and exploration
+14,Michael Scott,michael@dunder.com,2019-01-10,Scranton,Active,79000,Acme Corp,Regional manager
+15,Nina Tucker,   ,2022-05-14,Scranton,unknown,-99999,Acme Corp,Research assistant

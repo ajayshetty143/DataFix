@@ -78,6 +78,16 @@ export const datasetApi = {
     });
     return response.data;
   },
+
+  analyzeQuality: async (datasetId) => {
+    const response = await apiClient.post(`/datasets/${datasetId}/analyze`);
+    return response.data;
+  },
+
+  getQualityReport: async (datasetId) => {
+    const response = await apiClient.get(`/datasets/${datasetId}/quality`);
+    return response.data;
+  },
 };
 
 export default apiClient;

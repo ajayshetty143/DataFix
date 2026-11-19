@@ -5,22 +5,23 @@ import FileUploadZone from './components/FileUploadZone';
 import DatasetOverview from './components/DatasetOverview';
 import ColumnProfilingTable from './components/ColumnProfilingTable';
 import DatasetPreviewTable from './components/DatasetPreviewTable';
+import QualityDashboard from './components/QualityDashboard';
 import { 
   Sparkles, 
   Table, 
   BarChart2, 
+  ShieldAlert, 
   Activity, 
   History, 
   FileSpreadsheet, 
-  ArrowRight,
-  Layers
+  ArrowRight
 } from 'lucide-react';
 import { datasetApi } from './services/api';
 
 export default function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [activeDataset, setActiveDataset] = useState(null);
-  const [activeTab, setActiveTab] = useState('preview'); // 'preview' | 'profiling'
+  const [activeTab, setActiveTab] = useState('quality'); // 'quality' | 'preview' | 'profiling'
   const [recentDatasets, setRecentDatasets] = useState([]);
   const [showHealthDiagnostics, setShowHealthDiagnostics] = useState(false);
 
@@ -39,7 +40,7 @@ export default function App() {
 
   const handleUploadSuccess = (datasetData) => {
     setActiveDataset(datasetData);
-    setActiveTab('preview');
+    setActiveTab('quality'); // Default to Quality Engine upon upload
     fetchRecentDatasets();
   };
 
@@ -47,7 +48,7 @@ export default function App() {
     try {
       const fullDataset = await datasetApi.getDataset(item.id);
       setActiveDataset(fullDataset);
-      setActiveTab('preview');
+      setActiveTab('quality');
     } catch (err) {
       console.error('Failed to load selected dataset:', err);
     }
@@ -55,6 +56,10 @@ export default function App() {
 
   const handleReset = () => {
     setActiveDataset(null);
+  };
+
+  const handleNavigateToPreview = (issue) => {
+    setActiveTab('preview');
   };
 
   return (
@@ -67,13 +72,13 @@ export default function App() {
           <div className="relative z-10 max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-4">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Phase 2: Smart Dataset Upload & Preview</span>
+              <span>Phase 3: Intelligent Data Quality Engine</span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
-              DataFix <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Dataset Intelligence</span>
+              DataFix <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Quality Engine</span>
             </h1>
             <p className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed">
-              Upload CSV or Excel files up to 20 MB. Inspect schema structures, analyze missing values, compute statistical summaries, and explore records through paginated preview.
+              Deterministic detection for missing data, duplicate records, invalid formats, categorical inconsistencies, and statistical anomalies. Zero data alteration — complete analytical visibility.
             </p>
           </div>
         </div>
@@ -144,7 +149,19 @@ export default function App() {
             <DatasetOverview dataset={activeDataset} onReset={handleReset} />
 
             {/* Tab Navigation */}
-            <div className="flex items-center space-x-2 border-b border-slate-800 pb-3">
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
+              <button
+                onClick={() => setActiveTab('quality')}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                  activeTab === 'quality'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                    : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300'
+                }`}
+              >
+                <ShieldAlert className="w-4 h-4" />
+                <span>Quality Analysis Engine</span>
+              </button>
+
               <button
                 onClick={() => setActiveTab('preview')}
                 className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
@@ -176,12 +193,20 @@ export default function App() {
               </button>
             </div>
 
-            {/* Tab 1: Dataset Paginated Preview */}
+            {/* Tab 1: Intelligent Quality Engine Dashboard */}
+            {activeTab === 'quality' && (
+              <QualityDashboard
+                datasetId={activeDataset.id}
+                onNavigateToPreview={handleNavigateToPreview}
+              />
+            )}
+
+            {/* Tab 2: Dataset Paginated Preview */}
             {activeTab === 'preview' && (
               <DatasetPreviewTable datasetId={activeDataset.id} />
             )}
 
-            {/* Tab 2: Column Schema & Profiling */}
+            {/* Tab 3: Column Schema & Profiling */}
             {activeTab === 'profiling' && (
               <ColumnProfilingTable profiles={activeDataset.column_profiles} />
             )}
@@ -207,7 +232,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
-        DataFix Platform &bull; Phase 2 Smart Dataset Upload & Preview &bull; Ready for Evaluation
+        DataFix Platform &bull; Phase 3 Intelligent Quality Engine &bull; Ready for Evaluation
       </footer>
     </div>
   );

@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.database import Base, engine
@@ -10,8 +11,13 @@ from app.core.database import Base, engine
 async def lifespan(app: FastAPI):
     # Initialize database tables on startup
     Base.metadata.create_all(bind=engine)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE datasets ADD COLUMN quality_json TEXT"))
+            conn.commit()
+    except Exception:
+        pass  # Column already exists
     yield
-    # Cleanup on shutdown if needed
 
 
 app = FastAPI(
@@ -44,4 +50,3 @@ def root():
         "docs": "/docs",
         "health": f"{settings.API_V1_STR}/health",
     }
-

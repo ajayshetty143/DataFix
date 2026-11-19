@@ -14,3 +14,4 @@ id,name,email,age,income,department,is_active,join_date
 13,Michael Scott,michael@example.com,,65000.00,Sales,False,2020-01-10
 14,Nina Simone,nina@example.com,36,78000.00,Marketing,True,2022-12-04
 15,Oscar Martinez,,40,84500.50,Finance,True,2021-02-17
+

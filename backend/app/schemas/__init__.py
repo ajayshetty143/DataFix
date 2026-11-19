@@ -6,6 +6,11 @@ from app.schemas.dataset import (
     PaginatedPreviewResponse,
     DatasetListItem,
 )
+from app.schemas.quality import (
+    QualityIssueResponse,
+    QualitySummaryResponse,
+    QualityReportResponse,
+)
 
 __all__ = [
     "HealthResponse",
@@ -14,4 +19,7 @@ __all__ = [
     "DatasetProfileResponse",
     "PaginatedPreviewResponse",
     "DatasetListItem",
+    "QualityIssueResponse",
+    "QualitySummaryResponse",
+    "QualityReportResponse",
 ]

@@ -14,6 +14,7 @@ class Dataset(Base):
     total_rows = Column(Integer, nullable=False, default=0)
     total_columns = Column(Integer, nullable=False, default=0)
     profile_json = Column(Text, nullable=True)  # JSON string of profiler output
+    quality_json = Column(Text, nullable=True)  # JSON string of quality analysis output
     created_at = Column(
         DateTime, 
         default=lambda: datetime.now(timezone.utc), 
