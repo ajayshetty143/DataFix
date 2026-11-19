@@ -1,4 +1,5 @@
 import json
+import os
 from typing import List, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -6,12 +7,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "DataFix API"
-    VERSION: str = "0.1.0"
+    VERSION: str = "0.2.0"
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     DATABASE_URL: str = "sqlite:///./datafix.db"
+
+    # Uploads configuration
+    UPLOAD_DIR: str = "uploads"
+    MAX_FILE_SIZE_MB: int = 20
+    ALLOWED_EXTENSIONS: List[str] = [".csv", ".xlsx", ".xls"]
 
     # CORS origins
     BACKEND_CORS_ORIGINS: Union[List[str], str] = [
@@ -44,3 +50,6 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Ensure uploads directory exists
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

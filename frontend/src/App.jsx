@@ -1,18 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import HealthStatus from './components/HealthStatus';
+import FileUploadZone from './components/FileUploadZone';
+import DatasetOverview from './components/DatasetOverview';
+import ColumnProfilingTable from './components/ColumnProfilingTable';
+import DatasetPreviewTable from './components/DatasetPreviewTable';
 import { 
-  FolderTree, 
-  Layers, 
-  CheckCircle, 
-  Terminal, 
-  FileCode, 
-  Sparkles,
-  ArrowRight
+  Sparkles, 
+  Table, 
+  BarChart2, 
+  Activity, 
+  History, 
+  FileSpreadsheet, 
+  ArrowRight,
+  Layers
 } from 'lucide-react';
+import { datasetApi } from './services/api';
 
 export default function App() {
   const [isConnected, setIsConnected] = useState(false);
+  const [activeDataset, setActiveDataset] = useState(null);
+  const [activeTab, setActiveTab] = useState('preview'); // 'preview' | 'profiling'
+  const [recentDatasets, setRecentDatasets] = useState([]);
+  const [showHealthDiagnostics, setShowHealthDiagnostics] = useState(false);
+
+  const fetchRecentDatasets = async () => {
+    try {
+      const list = await datasetApi.listDatasets(5);
+      setRecentDatasets(list);
+    } catch (err) {
+      console.warn('Could not load recent datasets:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecentDatasets();
+  }, []);
+
+  const handleUploadSuccess = (datasetData) => {
+    setActiveDataset(datasetData);
+    setActiveTab('preview');
+    fetchRecentDatasets();
+  };
+
+  const handleSelectRecent = async (item) => {
+    try {
+      const fullDataset = await datasetApi.getDataset(item.id);
+      setActiveDataset(fullDataset);
+      setActiveTab('preview');
+    } catch (err) {
+      console.error('Failed to load selected dataset:', err);
+    }
+  };
+
+  const handleReset = () => {
+    setActiveDataset(null);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-[#0b0f19] text-slate-100 selection:bg-indigo-500 selection:text-white">
@@ -24,91 +67,147 @@ export default function App() {
           <div className="relative z-10 max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-4">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Phase 1 Initialized Successfully</span>
+              <span>Phase 2: Smart Dataset Upload & Preview</span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
-              DataFix <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Core Foundation</span>
+              DataFix <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Dataset Intelligence</span>
             </h1>
             <p className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed">
-              Modern full-stack architecture powered by React 18, Vite, Tailwind CSS, FastAPI, and SQLite + SQLAlchemy. Ready for intelligent data validation and remediation workflows.
+              Upload CSV or Excel files up to 20 MB. Inspect schema structures, analyze missing values, compute statistical summaries, and explore records through paginated preview.
             </p>
           </div>
         </div>
 
-        {/* Diagnostic & Communication Health Check */}
-        <section>
-          <HealthStatus onStatusChange={setIsConnected} />
-        </section>
+        {/* View Mode: When No Dataset is active */}
+        {!activeDataset ? (
+          <div className="space-y-8">
+            {/* Upload Zone */}
+            <section>
+              <FileUploadZone onUploadSuccess={handleUploadSuccess} />
+            </section>
 
-        {/* Phase 1 Architecture & Modular Structure Breakdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Card: Modular Project Structure */}
-          <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
-              <FolderTree className="w-5 h-5 text-indigo-400" />
-              <h3 className="font-semibold text-white">Modular Architecture</h3>
-            </div>
-            <ul className="mt-4 space-y-3 text-xs sm:text-sm font-mono text-slate-300">
-              <li className="flex items-start gap-2">
-                <span className="text-indigo-400 font-bold">backend/</span>
-                <span className="text-slate-400">FastAPI, SQLAlchemy ORM, SQLite DB, modular API routers, Pydantic schemas</span>
-              </li>
-              <li className="flex items-start gap-2 pl-4">
-                <span className="text-slate-500">├── app/core/</span>
-                <span className="text-slate-400">Pydantic settings, DB session & engine lifecycle</span>
-              </li>
-              <li className="flex items-start gap-2 pl-4">
-                <span className="text-slate-500">├── app/api/v1/</span>
-                <span className="text-slate-400">Versioned routing & health diagnostic endpoints</span>
-              </li>
-              <li className="flex items-start gap-2 pl-4">
-                <span className="text-slate-500">└── tests/</span>
-                <span className="text-slate-400">Automated Pytest suite verifying all endpoints</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-violet-400 font-bold">frontend/</span>
-                <span className="text-slate-400">React 18 + Vite + Tailwind CSS + Axios API integration layer</span>
-              </li>
-              <li className="flex items-start gap-2 pl-4">
-                <span className="text-slate-500">├── src/services/</span>
-                <span className="text-slate-400">Axios HTTP client with error interception</span>
-              </li>
-              <li className="flex items-start gap-2 pl-4">
-                <span className="text-slate-500">└── src/components/</span>
-                <span className="text-slate-400">Reusable diagnostic cards and status widgets</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Card: Verification Checklist */}
-          <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
-              <Layers className="w-5 h-5 text-emerald-400" />
-              <h3 className="font-semibold text-white">Phase 1 Checklist</h3>
-            </div>
-            <div className="mt-4 space-y-3">
-              {[
-                { label: 'React + Vite + Tailwind CSS setup', done: true },
-                { label: 'FastAPI modular application structure', done: true },
-                { label: 'SQLite + SQLAlchemy 2.0 configuration', done: true },
-                { label: 'Backend & frontend .env.example files', done: true },
-                { label: 'Health-check API with DB connectivity verification', done: true },
-                { label: 'End-to-end frontend-backend communication', done: isConnected },
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-900/40 border border-slate-800/50">
-                  <CheckCircle className={`w-4 h-4 ${item.done ? 'text-emerald-400' : 'text-slate-600'}`} />
-                  <span className={`text-xs sm:text-sm ${item.done ? 'text-slate-200' : 'text-slate-500'}`}>
-                    {item.label}
-                  </span>
+            {/* Recent Uploads List (if any exist) */}
+            {recentDatasets.length > 0 && (
+              <section className="bg-slate-800/30 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-sm">
+                <div className="flex items-center gap-2 text-white font-semibold text-sm mb-4">
+                  <History className="w-4 h-4 text-indigo-400" />
+                  <span>Previously Uploaded Datasets</span>
                 </div>
-              ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {recentDatasets.map((ds) => (
+                    <div
+                      key={ds.id}
+                      onClick={() => handleSelectRecent(ds)}
+                      className="group p-4 rounded-2xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 hover:border-indigo-500/40 cursor-pointer transition-all shadow-md flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                          <FileSpreadsheet className="w-4 h-4" />
+                        </div>
+                        <div className="truncate">
+                          <p className="text-xs sm:text-sm font-semibold text-white truncate group-hover:text-indigo-300 transition">
+                            {ds.filename}
+                          </p>
+                          <p className="text-[11px] text-slate-400 font-mono">
+                            {ds.total_rows.toLocaleString()} rows &bull; {ds.total_columns} cols &bull; {ds.file_size_formatted}
+                          </p>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all flex-shrink-0 ml-2" />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Toggle Health Diagnostics Drawer */}
+            <div className="pt-2">
+              <button
+                onClick={() => setShowHealthDiagnostics(!showHealthDiagnostics)}
+                className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition py-2"
+              >
+                <Activity className="w-4 h-4 text-indigo-400" />
+                {showHealthDiagnostics ? 'Hide System Health Diagnostics' : 'Show System Health Diagnostics'}
+              </button>
+
+              {showHealthDiagnostics && (
+                <div className="mt-4">
+                  <HealthStatus onStatusChange={setIsConnected} />
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        ) : (
+          /* View Mode: Dataset Loaded */
+          <div className="space-y-6">
+            {/* Top Metric Cards Overview */}
+            <DatasetOverview dataset={activeDataset} onReset={handleReset} />
+
+            {/* Tab Navigation */}
+            <div className="flex items-center space-x-2 border-b border-slate-800 pb-3">
+              <button
+                onClick={() => setActiveTab('preview')}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                  activeTab === 'preview'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                    : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300'
+                }`}
+              >
+                <Table className="w-4 h-4" />
+                <span>Dataset Preview</span>
+                <span className="text-[11px] px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-200 font-mono">
+                  {activeDataset.total_rows.toLocaleString()}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('profiling')}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                  activeTab === 'profiling'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                    : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300'
+                }`}
+              >
+                <BarChart2 className="w-4 h-4" />
+                <span>Column Profiling & Stats</span>
+                <span className="text-[11px] px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-200 font-mono">
+                  {activeDataset.total_columns}
+                </span>
+              </button>
+            </div>
+
+            {/* Tab 1: Dataset Paginated Preview */}
+            {activeTab === 'preview' && (
+              <DatasetPreviewTable datasetId={activeDataset.id} />
+            )}
+
+            {/* Tab 2: Column Schema & Profiling */}
+            {activeTab === 'profiling' && (
+              <ColumnProfilingTable profiles={activeDataset.column_profiles} />
+            )}
+
+            {/* Collapsible Health Diagnostic footer */}
+            <div className="pt-4 border-t border-slate-800/60">
+              <button
+                onClick={() => setShowHealthDiagnostics(!showHealthDiagnostics)}
+                className="inline-flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition"
+              >
+                <Activity className="w-3.5 h-3.5" />
+                <span>{showHealthDiagnostics ? 'Hide Diagnostics' : 'Check API & Database Health'}</span>
+              </button>
+
+              {showHealthDiagnostics && (
+                <div className="mt-4">
+                  <HealthStatus onStatusChange={setIsConnected} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
       <footer className="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
-        DataFix Platform &bull; Phase 1 Foundation &bull; Ready for Phase 2 Approval
+        DataFix Platform &bull; Phase 2 Smart Dataset Upload & Preview &bull; Ready for Evaluation
       </footer>
     </div>
   );

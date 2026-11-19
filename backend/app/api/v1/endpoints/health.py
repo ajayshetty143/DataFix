@@ -31,3 +31,4 @@ def get_health(db: Session = Depends(get_db)):
             "cors_origins": settings.BACKEND_CORS_ORIGINS,
         },
     )
+

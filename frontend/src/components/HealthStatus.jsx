@@ -186,3 +186,4 @@ export default function HealthStatus({ onStatusChange }) {
     </div>
   );
 }
+

@@ -1,0 +1,16 @@
+id,name,email,age,income,department,is_active,join_date
+1,Alice Johnson,alice@example.com,29,75000.50,Engineering,True,2023-01-15
+2,Bob Smith,,34,62000.00,Marketing,False,2022-06-20
+3,Charlie Brown,charlie@example.com,,89500.25,Engineering,True,2021-11-05
+4,Diana Prince,diana@example.com,41,,Executive,True,2019-03-12
+5,Evan Wright,,25,48000.00,,False,2024-02-01
+6,Fiona Gallagher,fiona@example.com,32,71200.00,Sales,True,2022-09-18
+7,George Clark,,45,105000.00,Executive,True,2018-07-23
+8,Hannah Abbott,hannah@example.com,28,,Marketing,False,2023-05-30
+9,Ian Malcolm,ian@example.com,52,120000.75,Research,True,2017-12-01
+10,Julia Roberts,julia@example.com,38,82500.00,,True,2020-08-14
+11,Kevin Bacon,,49,94000.00,Sales,False,2019-10-10
+12,Laura Croft,laura@example.com,31,98000.00,Engineering,True,2021-04-25
+13,Michael Scott,michael@example.com,,65000.00,Sales,False,2020-01-10
+14,Nina Simone,nina@example.com,36,78000.00,Marketing,True,2022-12-04
+15,Oscar Martinez,,40,84500.50,Finance,True,2021-02-17
